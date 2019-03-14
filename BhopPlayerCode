@@ -1,0 +1,1227 @@
+using System;
+using UnityEngine;
+using UnityStandardAssets.CrossPlatformInput;
+using UnityStandardAssets.Utility;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using Random = UnityEngine.Random;
+
+namespace UnityStandardAssets.Characters.FirstPerson
+{
+    [RequireComponent(typeof(CharacterController))]
+    [RequireComponent(typeof(AudioSource))]
+    public class FirstPersonController : MonoBehaviour
+    {
+        [Header("PlayerActions:")]
+        [Space]
+        public bool isGround;
+        public bool inAir;
+        [SerializeField] private bool m_IsWalking;
+        public bool isCrouchin;
+        public bool isJumpPad;
+        public bool isMouseLock;
+        [Header("PlayerSpeeds:")]
+        [Space]
+        [SerializeField] private float m_WalkSpeed;
+        public float WalkResist;
+   //   public float DirectionSpeed;
+        public float CrouchSpeed;
+        [SerializeField] [Range(0f, 1.8f)] public float CrouchinLevel;
+        //[SerializeField] private float m_RunSpeed;
+        [HideInInspector] [SerializeField] [Range(0f, 1f)] private float m_RunstepLenghten;
+        [SerializeField] private float m_JumpSpeed;
+        #region Preseted
+        private float PresetJumpSpeed;
+        private float PresetWalkSpeed;
+        private float PresetCrouchSpeed;
+        private float PresetAirMultiplier;
+        private float PresetGravity;
+        private float PresetAirFriction;
+        private float PresetGrvaityFriction;
+        private float PresetGroundFriction;
+        private float PresetMaxspeed;
+        private float PresetAirRatio;
+        #endregion
+        public float CollisonRatio;
+        public float AirMultiplier;
+        public float GroundMultiplier;
+        public float AirRatio;
+        public float AirFriction;
+        public float GroundFriction;
+        [SerializeField] private float m_StickToGroundForce;
+        [SerializeField] private float m_GravityMultiplier;
+        [Header("PlayerBools:")]
+        [Space]
+        public bool AutoHop;
+        public bool ResetedAcceleration;
+        public bool SetAirRatio;
+        public bool StatsUI;
+        public bool KeyInputUI;
+        [HideInInspector] public bool GUIKeys;
+        [HideInInspector] public bool GUIPrimary;
+        [Header("PlayerLimits:")]
+        [Space]
+        public float WalkMin;
+        public float WalkMax;
+        public float BhopMin;
+        public float BhopMax;
+        [Header("OtherClasses:")]
+        [Space]
+        public GameObject PlayerCamera;
+        [SerializeField] private MouseLook m_MouseLook;
+        [SerializeField] private bool m_UseFovKick;
+        [SerializeField] private FOVKick m_FovKick = new FOVKick();
+        [SerializeField] private bool m_UseHeadBob;
+        [SerializeField] private CurveControlledBob m_HeadBob = new CurveControlledBob();
+        [SerializeField] private LerpControlledBob m_JumpBob = new LerpControlledBob();
+        [SerializeField] private float m_StepInterval;
+        [SerializeField] private AudioClip[] m_FootstepSounds;    // an array of footstep sounds that will be randomly selected from.
+        [SerializeField] private AudioClip m_JumpSound;           // the sound played when character leaves the ground.
+        [SerializeField] private AudioClip m_LandSound;           // the sound played when character touches back on ground.
+       // public bool RocketJump;
+        #region TimeRegion
+        private bool StartTimer = false;
+        private bool StopTimer = false;
+        private float Timer;
+        private float NowTimer;
+        [HideInInspector] public float BestTimer;
+        private bool Finnished = false;
+        private string hours;
+        private string minutes;
+        private string seconds;
+        private string milliseconds;
+        #endregion
+        #region ActionsRegion
+        private bool Reseted;
+        private bool Reseted1;
+        private bool Reseted2;
+        private bool ResetCustomStats;
+        private bool Portal1;
+        private bool JumpPad1;
+        private bool NoSpeed;
+        private bool noWalk;
+        private bool noJump;
+        #endregion
+        #region KeysRegion
+        private bool _w_;
+        private bool _s_;
+        private bool _d_;
+        private bool _Nd_;
+        private bool _Na_;
+        private bool _a_;
+        private bool _space_;
+        private bool _Nspace_;
+        #endregion
+        #region MovementVariables
+        private float _AccelSpeed;
+        private float _Rotation;
+        private float _WalkSpeed;
+        private Vector3 _currentVelocity;
+        private float _CollisonSpeed;
+        private float _MinusSpeed;
+        private float _Drop;
+        private float _ProjectVelocity;
+        private float _NewSpeed;
+        private float _OldSpeed;
+        private float _AirSpeed;
+        private float _AirRatio;
+        private float _minusRotx;
+       private Vector3 _WishDir;
+        #endregion
+        #region GUI
+        [Header("Player'sGUI")]
+        [Space]
+        [HideInInspector] public bool attheEnd;
+        [HideInInspector] public bool isendMenu;
+        #region Opitions
+        [HideInInspector] public Toggle KeysToggle;
+        [HideInInspector] public Toggle StatsToggle;
+        #endregion
+        #region EndGUI
+        [HideInInspector] public GameObject EndCamera;
+        [HideInInspector] public GameObject PauseMenu;
+        [HideInInspector] public Text e_time;
+        [HideInInspector] public Text e_Besttime;
+        [HideInInspector] public Text e_Averagetime;
+        [HideInInspector] public Text e_Averagespeed;
+        [HideInInspector] public Text e_topspeed;
+        [HideInInspector] public Text e_jump;
+        [HideInInspector] public Text e_strafes;
+        [HideInInspector] public Text e_strafesratios;
+        [HideInInspector] public Text e_averagestrafes;
+        [HideInInspector] public Text e_topstrafe;
+        [HideInInspector] public Text e_bestjumpspeed;
+        [HideInInspector] private float topspeed;
+        #endregion
+        #region CustomGUI
+        [HideInInspector] public Text TimerText;
+        [HideInInspector] public Text BestTimeText;
+        [HideInInspector] public Text SpeedText;
+        [HideInInspector] public Text JumpText;
+        [HideInInspector] public Text StrafeText;
+        [HideInInspector] private float Speed;
+        [HideInInspector] private float StrafeCount;
+        [HideInInspector] private float StrafePercent;
+        [HideInInspector] private float StrafePostive;
+        [HideInInspector] private float StrafeNegitive;
+        [HideInInspector] private float JumpStats;
+        [HideInInspector] public GameObject StatsGUI;
+        [HideInInspector] public GameObject StartGUI;
+        [HideInInspector] public GameObject MidGUI;
+        [HideInInspector] public GameObject EndGUI;
+        [HideInInspector] public Slider JumpSlider;
+        [HideInInspector] public Text JumpValueText;
+        [HideInInspector] public Slider WalkSlider;
+        [HideInInspector] public Text WalkValueText;
+        [HideInInspector] public Slider CrouchSlider;
+        [HideInInspector] public Text CrouchValueText;
+        [HideInInspector] public Slider AirMultiplierSlider;
+        [HideInInspector] public Text AirMultiplierText;
+        [HideInInspector] public Slider AirFrictionSlider;
+        [HideInInspector] public Text AirFrictionText;
+        [HideInInspector] public Slider AirRatioSlider;
+        [HideInInspector] public Text AirRatioText;
+        [HideInInspector] public Slider GroundFrictionSlider;
+        [HideInInspector] public Text GroundFrictionText;
+        [HideInInspector] public Slider GravitySlider;
+        [HideInInspector] public Text GravityText;
+        [HideInInspector] public InputField SpeedLimitInput;
+        [HideInInspector] public Text SpeedLimitText;
+        #endregion
+        //public float JumpStats;
+        #endregion
+        #region m_Varibles
+        private Camera m_Camera;
+        private bool m_Jump;
+        private float m_YRotation;
+        private Vector2 m_Input;
+        private Vector3 m_MoveDir = Vector3.zero;
+        private CharacterController m_CharacterController;
+        private Rigidbody m_Rigidbody;
+        private CollisionFlags m_CollisionFlags;
+        private bool m_PreviouslyGrounded;
+        private Vector3 m_OriginalCameraPosition;
+        private float m_StepCycle;
+        private float m_NextStep;
+        private bool m_Jumping;
+        #endregion
+        class Cmd
+        {
+            public float forwardmove;
+            public float rightmove;
+            public float upmove;
+        }
+        private Cmd cmd; // Player commands, stores wish commands that the player asks for (Forward, back, jump, etc)
+        private AudioSource m_AudioSource;
+        // Use this for initialization
+
+        //Start
+        private void Start()
+        {
+
+            m_CharacterController = GetComponent<CharacterController>();
+            m_Rigidbody = GetComponent<Rigidbody>();
+            m_Camera = Camera.main;
+            m_OriginalCameraPosition = m_Camera.transform.localPosition;
+            m_FovKick.Setup(m_Camera);
+            m_HeadBob.Setup(m_Camera, m_StepInterval);
+            m_StepCycle = 0f;
+            m_NextStep = m_StepCycle / 2f;
+            m_Jumping = false;
+            m_AudioSource = GetComponent<AudioSource>();
+            m_MouseLook.Init(transform, m_Camera.transform);
+        }
+
+        // Update is called once per frame
+        private void Update()
+        {
+            Actions();
+            Crounchin();
+            Telleportion();
+            RotateView();
+            // the jump state needs to read here to make sure it is not missed
+            if (AutoHop)
+            {
+                if (!m_Jump)
+                {
+                    m_Jump = CrossPlatformInputManager.GetButton("Jump");
+                }
+                else
+                {
+                    m_Jump = false;
+                }
+            }
+            else
+            {
+                if (!m_Jump)
+                {
+                    m_Jump = CrossPlatformInputManager.GetButtonDown("Jump");
+                }
+                else
+                {
+                    m_Jump = false;
+                }
+            }
+            #region GUI Updates
+            if (isendMenu)
+            {
+                EndCamera.SetActive(true);
+                PlayerCamera.SetActive(false);
+                Time.timeScale = 1 / 100;
+                Cursor.visible = true;
+                StatsGUI.SetActive(false);
+                Cursor.lockState = CursorLockMode.None;
+                GUIPrimary = false;
+                GUIKeys = false;
+            }
+            else
+            {
+                if (StatsUI)
+                {
+                    GUIPrimary = true;
+                }
+                else
+                {
+                    GUIPrimary = false;
+                }
+                if (KeyInputUI)
+                {
+                    GUIKeys = true;
+                }
+                else
+                {
+                    GUIKeys = false;
+                }
+            }
+            if (m_Jump)
+            {
+                if (m_CharacterController.isGrounded)
+                {
+                    JumpStats += 1;
+                }
+            }
+            float X = 0;
+            float Y = 0;
+            Y += (Input.GetAxis("Mouse Y"));
+            X += (Input.GetAxis("Mouse X"));
+            float rotX = (X * 1);
+   
+            #region restedCustomGUI
+            {
+                if (m_JumpSpeed < 0.5)
+                {
+                    m_JumpSpeed = 10f;
+                }
+
+            }
+            #endregion
+            #region InfoGUI
+            {
+
+                #region end
+
+                e_time.text = "TIME: " + minutes + ":" + seconds + ":" + milliseconds;
+                e_Besttime.text = BestTimeText.text;
+                e_topspeed.text = "TOPSPEED: " + Mathf.Round( topspeed * 10);
+                e_jump.text = "JUMPS: " + JumpStats;
+                e_strafes.text = "STRAFES: " + StrafeCount;
+                e_strafesratios.text = "STRAFES RATIO: " + "(" + Mathf.Round(StrafePercent) + "%" + ")";
+
+
+                //  float averagespeed = 
+                //   e_Averagespeed.text ""
+                #endregion
+                #region Stats
+                JumpText.text = "JUMPS: " + JumpStats;
+                SpeedText.text = "SPEED: " + Mathf.Round(Speed * 10);
+                StrafeText.text = StrafeCount + " " + "(" + Mathf.Round(StrafePercent) + "%" + ")";
+                StrafePercent = ((StrafePostive + StrafeNegitive) / (StrafePostive)) * 100;
+                #endregion
+            }
+            #endregion
+            if (Speed > topspeed)
+            {
+                topspeed = Speed;
+            }
+            if (_space_ && _a_ && rotX < 0)
+            {
+                StrafePostive += 1;
+            }
+            if (_space_ && _d_ && rotX > 0)
+            {
+                StrafePostive += 1;
+            }
+            if (_space_ && _a_ && rotX > 0)
+            {
+                StrafeNegitive -= 1;
+            }
+            if (_space_ && _d_ && rotX < 0)
+            {
+                StrafeNegitive -= 1;
+            }
+            if (_space_ && Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D))
+            {
+                StrafeCount += 1;
+            }
+            #endregion
+            if (!m_PreviouslyGrounded && m_CharacterController.isGrounded)
+            {
+                StartCoroutine(m_JumpBob.DoBobCycle());
+                PlayLandingSound();
+                m_MoveDir.y = 0f;
+                m_Jumping = false;
+            }
+            if (!m_CharacterController.isGrounded && !m_Jumping && m_PreviouslyGrounded)
+            {
+                m_MoveDir.y = 0f;
+            }
+            if (m_CharacterController.isGrounded)
+            {
+                isGround = true;
+                inAir = false;
+                if (_space_)
+                    isGround = false;
+
+            }
+            else if (!m_CharacterController.isGrounded)
+            {
+                isGround = false;
+                inAir = true;
+
+            }
+            m_PreviouslyGrounded = m_CharacterController.isGrounded;
+        }
+        #region CharacterFormulas
+        void AirMove()
+        {
+            float X = 0;
+            float Y = 0;
+            Y += (Input.GetAxis("Mouse Y"));
+            X += (Input.GetAxis("Mouse X"));
+            float rotX = (X * 1);
+            Speed = _AccelSpeed + _WalkSpeed;
+            if (SetAirRatio)
+            {
+                _AirRatio = AirRatio;
+            }
+            else
+            {
+               _AirRatio = (100 - (_AccelSpeed *AirFriction)) / 100;
+                if (_AirRatio < 0.33)
+                {
+                    _AirRatio = 0.33f;
+                }
+            }
+            if (_space_ && m_Jumping)
+            {
+                transform.Translate((Vector3.forward * _AccelSpeed / 100));
+                _AccelSpeed += _Rotation * _AirRatio;
+                _AccelSpeed *= _CollisonSpeed * AirMultiplier;
+            }
+            if (_space_ && _a_ && m_Jumping)
+            {
+                _Rotation = (-rotX * Time.deltaTime);
+                
+            }
+            if (_space_ && _d_ && m_Jumping)
+            {
+                _Rotation = (rotX * Time.deltaTime);
+                if (rotX < 0 && _AirRatio < 0.75)
+                {
+                    _AccelSpeed -= _AccelSpeed / 4;
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.A) || (Input.GetKeyUp(KeyCode.D)))
+            {
+                _Rotation = 0;
+                rotX = 0;
+            }
+            if (_Nd_ || _Na_)
+            {
+                _Rotation = 0;
+                rotX = 0;
+            }
+            if (m_CharacterController.isGrounded)
+            {
+                rotX = 0;
+                _Rotation = 0;
+                _AccelSpeed *= _CollisonSpeed * GroundMultiplier; 
+            }
+        }
+        
+        void GroundMove()
+        {
+           
+            Vector3 playerVelocity = m_CharacterController.velocity;
+            _AccelSpeed -= _AccelSpeed * (Time.deltaTime * GroundFriction);
+            Speed = playerVelocity.magnitude;
+        }
+        void ApplyFriction()
+        {
+            Vector3 currentVelocity = m_CharacterController.velocity;
+            float speed = currentVelocity.magnitude;
+            float drop = speed * AirFriction * Time.deltaTime;
+          
+            //Vector3 maxveloicty = currentVelocity * (Mathf.Max(speed - drop, 0f) / speed);
+        }
+
+        #endregion
+        //Update
+        private void PlayLandingSound()
+        {
+            m_AudioSource.clip = m_LandSound;
+            m_AudioSource.Play();
+            m_NextStep = m_StepCycle + .5f;
+        }
+
+        //FixedUpdate
+        private void FixedUpdate()
+        {
+            Telleportion();
+            Actions();
+            float speed;
+         
+            GetInput(out speed);
+            // always move along the camera forward as it is the direction that it being aimed at
+            Vector3 desiredMove = transform.forward * m_Input.y + transform.right * m_Input.x;
+
+            // get a normal for the surface that is being touched to move along it
+            RaycastHit hitInfo;
+            Physics.SphereCast(transform.position, m_CharacterController.radius, Vector3.down, out hitInfo,
+                               m_CharacterController.height / 2f, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+            desiredMove = Vector3.ProjectOnPlane(desiredMove, hitInfo.normal).normalized;
+
+            m_MoveDir.x = desiredMove.x * speed;
+            m_MoveDir.z = desiredMove.z * speed;
+            float X = 0;
+            float Y = 0;
+            Y += (Input.GetAxis("Mouse Y"));
+            X += (Input.GetAxis("Mouse X"));
+            float rotX = (X * 1);
+            Vector3 playerVelocity = m_CharacterController.velocity;
+            _CollisonSpeed = Vector3.Dot(playerVelocity, m_MoveDir);
+            _CollisonSpeed = _CollisonSpeed / CollisonRatio;
+            #region Limits
+            if (_AccelSpeed > BhopMax)
+            {
+                _AccelSpeed = BhopMax;
+            }
+            if (_AccelSpeed < BhopMin)
+            {
+                _AccelSpeed = BhopMin;
+            }
+            if (_CollisonSpeed > 1)
+            {
+                _CollisonSpeed = 1;
+            }
+            if (_CollisonSpeed < 0)
+            {
+                _CollisonSpeed = 0;
+            }
+            if (AirMultiplier < 0)
+            {
+                AirMultiplier = 0;
+            }
+            if (ResetedAcceleration)
+            {
+                if (m_PreviouslyGrounded)
+                {
+                    Debug.Log("rested");
+                    _AccelSpeed = 0f;
+                }
+            }
+            #endregion
+            #region Time
+            Timer += Time.deltaTime;
+            NowTimer = Timer;
+            hours = Mathf.Floor((Timer % 216000) / 3600).ToString("00");
+            minutes = Mathf.Floor((Timer % 3600) / 60).ToString("00");
+            seconds = (Timer % 60).ToString("00");
+            milliseconds = ((Timer * 1000) % 1000).ToString("000");
+            #endregion
+            if (inAir)
+            {
+                AirMove();
+            }
+            if (isGround)
+            {
+                GroundMove();
+            }
+            if (m_CharacterController.isGrounded)
+            {
+                m_MoveDir.y = -m_StickToGroundForce;
+
+                if (m_Jump)
+                {
+                    m_MoveDir.y = m_JumpSpeed;
+                    PlayJumpSound();
+                    m_Jump = false;
+                    m_Jumping = true;
+                }
+            }
+            else
+            {
+                m_MoveDir += Physics.gravity * m_GravityMultiplier * Time.fixedDeltaTime;
+            }
+            m_CollisionFlags = m_CharacterController.Move(m_MoveDir * Time.fixedDeltaTime);
+            ProgressStepCycle(speed);
+            UpdateCameraPosition(speed);
+
+            m_MouseLook.UpdateCursorLock();
+        }
+
+        #region GUIVaribles
+        #region custom
+        public void SetWalkSpeed(float walkspeed)
+        {
+            walkspeed = WalkSlider.value;
+            string walkstring = (WalkSlider.value).ToString("F2");
+            WalkValueText.text = walkstring;
+            WalkResist = walkspeed;
+            PresetWalkSpeed = walkspeed;
+        }
+
+        public void SetJumpSpeed(float jumpspeed)
+        {
+            jumpspeed = JumpSlider.value;
+            string jumpstring = Mathf.Floor(jumpspeed).ToString("00");  // Mathf.Floor((Timer % 3600) / 60).ToString("00");
+            JumpValueText.text = jumpstring;
+            m_JumpSpeed = jumpspeed;
+            PresetJumpSpeed = jumpspeed;
+        }
+        public void SetCrouchSpeed(float crouchspeed)
+        {
+            crouchspeed = CrouchSlider.value;
+            string crouchstring = Mathf.Floor(crouchspeed).ToString("00");
+            CrouchValueText.text = crouchstring;
+            CrouchSpeed = crouchspeed;
+            PresetCrouchSpeed = crouchspeed;
+        }
+        public void SetAirMultiplierSpeed(float airmultiplierspeed)
+        {
+            airmultiplierspeed = AirMultiplierSlider.value;
+            string airmultiplierstring = (airmultiplierspeed).ToString("F2");
+            AirMultiplierText.text = airmultiplierstring;
+            AirMultiplier = airmultiplierspeed;
+            PresetAirMultiplier = airmultiplierspeed;
+        }
+        public void SetGravitySpeed(float gravityspeed)
+        {
+            gravityspeed = GravitySlider.value;
+            string gravitystring = (gravityspeed).ToString("00");
+            GravityText.text = gravitystring;
+            m_GravityMultiplier = gravityspeed;
+            PresetGravity = gravityspeed;
+        }
+        public void SetAirFrictionSpeed(float airfrictionspeed)
+        {
+            airfrictionspeed = AirFrictionSlider.value;
+            string airfrictionstring = (airfrictionspeed).ToString("00");
+            AirFrictionText.text = airfrictionstring;
+            AirFriction = airfrictionspeed;
+            PresetAirFriction = airfrictionspeed;
+        }
+        public void SetGroundFrictionSpeed(float groundfrictionspeed)
+        {
+            groundfrictionspeed = GroundFrictionSlider.value;
+            string groundfrictionstring = (groundfrictionspeed).ToString("00");
+            GroundFrictionText.text = groundfrictionstring;
+            GroundFriction = groundfrictionspeed;
+            PresetGroundFriction = groundfrictionspeed;
+        }
+        public void setAirRatio(float airratiospeed)
+        {
+            airratiospeed = AirRatioSlider.value;
+            string airratiostring = (airratiospeed).ToString("F2");
+            AirRatioText.text = airratiostring;
+            AirRatio = airratiospeed;
+            PresetAirRatio = airratiospeed;
+        }
+        public void ResetVaribles()
+        {
+            WalkSlider.value = 0.25f;
+            WalkResist = 0.25f;
+            CrouchSlider.value = 4f;
+            CrouchSpeed = 4f;
+            JumpSlider.value = 10f;
+            m_JumpSpeed = 10f;
+            AirMultiplierSlider.value = 1f;
+            AirMultiplier = 1f;          
+            AirRatio = 0.25f;
+            AirFrictionSlider.value = 2f;
+            AirFriction = 2f;
+            GroundFrictionSlider.value = 25f;
+            GroundFriction = 25f;
+            GravitySlider.value = 2f;
+            m_GravityMultiplier = 2f;
+        }
+        public void OnButtonSpeedLimit()
+        {
+            string maxstring = SpeedLimitInput.text;
+            float divison = float.Parse(maxstring);
+            BhopMax = divison / 10f;
+        }
+        #endregion
+        public void KEyToggle()
+        {
+            if (KeysToggle.isOn == true)
+            {
+                KeyInputUI = true;
+            }
+            else
+            {
+                KeyInputUI = false;
+            }
+        }
+        public void StasToggle()
+        {
+            if (StatsToggle.isOn == true)
+            {
+                StatsUI = true;
+            }
+            else
+            {
+                StatsUI = false;
+            }
+        }
+        #endregion
+
+        #region ControllerStep/Sound Code
+        private void PlayJumpSound()
+        {
+            m_AudioSource.clip = m_JumpSound;
+            m_AudioSource.Play();
+        }
+        private void ProgressStepCycle(float speed)
+        {
+            if (m_CharacterController.velocity.sqrMagnitude > 0 && (m_Input.x != 0 || m_Input.y != 0))
+            {
+                m_StepCycle += (m_CharacterController.velocity.magnitude + (speed * (m_IsWalking ? 1f : m_RunstepLenghten))) *
+                             Time.fixedDeltaTime;
+            }
+            if (!(m_StepCycle > m_NextStep))
+            {
+                return;
+            }
+            m_NextStep = m_StepCycle + m_StepInterval;
+
+            PlayFootStepAudio();
+        }
+        private void PlayFootStepAudio()
+        {
+            if (!m_CharacterController.isGrounded)
+            {
+                return;
+            }
+            // pick & play a random footstep sound from the array,
+            // excluding sound at index 0
+            int n = Random.Range(1, m_FootstepSounds.Length);
+            m_AudioSource.clip = m_FootstepSounds[n];
+            m_AudioSource.PlayOneShot(m_AudioSource.clip);
+            // move picked sound to index 0 so it's not picked next time
+            m_FootstepSounds[n] = m_FootstepSounds[0];
+            m_FootstepSounds[0] = m_AudioSource.clip;
+        }
+        private void UpdateCameraPosition(float speed)
+        {
+            Vector3 newCameraPosition;
+            if (!m_UseHeadBob)
+            {
+                return;
+            }
+            if (m_CharacterController.velocity.magnitude > 0 && m_CharacterController.isGrounded)
+            {
+                m_Camera.transform.localPosition =
+                    m_HeadBob.DoHeadBob(m_CharacterController.velocity.magnitude +
+                                      (speed * (m_IsWalking ? 1f : m_RunstepLenghten)));
+                newCameraPosition = m_Camera.transform.localPosition;
+                newCameraPosition.y = m_Camera.transform.localPosition.y - m_JumpBob.Offset();
+            }
+            else
+            {
+                newCameraPosition = m_Camera.transform.localPosition;
+                newCameraPosition.y = m_OriginalCameraPosition.y - m_JumpBob.Offset();
+            }
+            m_Camera.transform.localPosition = newCameraPosition;
+        }
+        #endregion
+        #region ETC Actions and Voids (Crouchin,Keys)
+        void Crounchin()
+        {
+            if ((Input.GetKey(KeyCode.C) || Input.GetKey(KeyCode.LeftControl)))
+            {
+                m_CharacterController.height = CrouchinLevel;
+                isCrouchin = true;
+            }
+            if (Input.GetKeyUp(KeyCode.C) || Input.GetKeyUp(KeyCode.LeftControl))
+            {
+                m_CharacterController.height = 1.8f;
+                isCrouchin = false;
+            }
+        }
+        void Keys()
+        {
+            _w_ = (Input.GetKey(KeyCode.W));
+            _s_ = Input.GetKey(KeyCode.S);
+            _d_ = (Input.GetKey(KeyCode.D));
+            _Nd_ = (Input.GetKeyUp(KeyCode.D));
+            _a_ = (Input.GetKey(KeyCode.A));
+            _Na_ = (Input.GetKeyUp(KeyCode.A));
+            _space_ = (Input.GetKey(KeyCode.Space));
+            _Nspace_ = (Input.GetKeyUp(KeyCode.Space));
+        }
+        #endregion
+
+
+        private void GetInput(out float speed)
+        {
+            float X = 0;
+            float Y = 0;
+            Y += (Input.GetAxis("Mouse Y"));
+            X += (Input.GetAxis("Mouse X"));
+            float rotX = (X * 1);
+            // Read input
+            float horizontal = CrossPlatformInputManager.GetAxis("Horizontal");
+            float vertical = CrossPlatformInputManager.GetAxis("Vertical");
+            bool waswalking = m_IsWalking;
+            _currentVelocity = m_CharacterController.velocity;
+          
+
+#if !MOBILE_INPUT
+            // On standalone builds, walk/run speed is modified by a key press.
+            // keep track of whether or not the character is walking or running
+            //m_IsWalking = !Input.GetKey(KeyCode.LeftShift);
+#endif
+            // set the desired speed to be walking or running
+            //speed = m_IsWalking ? m_WalkSpeed : m_RunSpeed;
+            m_Input = new Vector2(horizontal, vertical);
+
+            if (isGround)
+            {
+                {
+                    speed = _WalkSpeed;
+                    _OldSpeed = Speed;
+                }
+            }
+            else
+            {
+                if (m_MoveDir.y > 0)
+                {
+                    _AirSpeed = _currentVelocity.magnitude;
+                }
+                speed = _WalkSpeed;
+                _NewSpeed = speed;
+            }
+            _ProjectVelocity = Vector3.Dot(_currentVelocity, m_MoveDir);
+            _currentVelocity *= Mathf.Max(_WalkSpeed - _Drop, 0) / _WalkSpeed;
+            _Drop = speed * AirFriction * Time.fixedDeltaTime;
+            _MinusSpeed = speed - _Drop;
+            _WalkSpeed = _WalkSpeed * m_WalkSpeed;
+            if (isGround)
+            {
+                 _minusRotx = Mathf.Abs(rotX) * WalkResist;
+                speed -= _minusRotx;
+            }
+            if (_w_)
+            {
+                _WalkSpeed += (WalkMin * Time.deltaTime);
+            }
+            else
+            {
+                _WalkSpeed -= (WalkMin * Time.deltaTime);
+            }
+            if (_s_)
+            {
+                _WalkSpeed = WalkMin;
+            }
+            // normalize input if it exceeds 1 in combined length:
+            if (m_Input.sqrMagnitude > 1)
+            {
+                m_Input.Normalize();
+            }
+            if (isCrouchin)
+            {
+               _WalkSpeed = CrouchSpeed;
+                if (inAir)
+                {
+                    _WalkSpeed = WalkMax;
+                }
+            }
+            if (speed > WalkMax)
+            {
+                speed = WalkMax;
+            }
+            if (speed < WalkMin)
+            {
+                speed = WalkMin;
+            }
+            if (_WalkSpeed > WalkMax)
+            {
+                _WalkSpeed = WalkMax;
+            }
+            if (_WalkSpeed < WalkMin)
+            {
+                _WalkSpeed = WalkMin;
+            }
+            // handle speed change to give an fov kick
+            // only if the player is going to a run, is running and the fovkick is to be used
+            if (m_IsWalking != waswalking && m_UseFovKick && m_CharacterController.velocity.sqrMagnitude > 0)
+            {
+                StopAllCoroutines();
+                StartCoroutine(!m_IsWalking ? m_FovKick.FOVKickUp() : m_FovKick.FOVKickDown());
+            }
+        }
+        //InputSpeed
+        #region GUIActions
+        #region end
+        public void SavePlayer()
+        {
+            SaveSystem.SaveTime(this);
+        }
+        public void LoadPlayer()
+        {
+            PlayerData data = SaveSystem.LoadPlayer();
+
+            BestTimer = data.bestTime;
+
+        }
+        public void EndExit()
+        {
+            isendMenu = false;
+            Finnished = true;
+            PlayerCamera.SetActive(true);
+            EndCamera.SetActive(false);
+            Time.timeScale = 1f;
+            StatsGUI.SetActive(true);
+            noJump = false;
+            m_CharacterController.enabled = true;
+            
+        }
+        public void EndReplay()
+        {
+            isendMenu = false;
+            Finnished = true;
+            PlayerCamera.SetActive(true);
+            EndCamera.SetActive(false);
+            Time.timeScale = 1f;
+            noJump = false;
+            m_CharacterController.enabled = true;
+            transform.position = new Vector3(0.5f, 1f, 0.5f);
+            StatsGUI.SetActive(true);
+        }
+        #endregion
+        private void OnGUI()
+        {          
+            Keys();
+            float X = 0;
+            float Y = 0;
+            Y += (Input.GetAxis("Mouse Y"));
+            X += (Input.GetAxis("Mouse X"));
+  
+                if (GUIKeys)
+                {
+                    GUI.color = Color.yellow;
+                    //          GUI.Label(new Rect(20, 40, 800, 200), "Time: " + Timer);
+                    //          GUI.Label(new Rect(20, 20, 800, 200), "BestTime: " + BestTimer);
+                    //   GUI.Box(new Rect(525, 450, 270, 105), "Keys:");
+                    GUI.Box(new Rect(580, 620, 270, 105), "Keys:");
+                    if (_w_)
+                    {
+                        //setbool gameobject
+
+                        GUI.Label(new Rect(700, 645, 400, 100), "- W -");
+                    }
+                    else
+                    {
+
+                        GUI.Label(new Rect(700, 645, 400, 100), "-  -  -");
+                    }
+                    if (_s_)
+                    {
+
+                        GUI.Label(new Rect(702, 665, 400, 100), "- S -");
+                    }
+                    else
+                    {
+
+                        GUI.Label(new Rect(702, 665, 400, 100), "-  -  -");
+                    }
+                    if (_a_)
+                    {
+                        GUI.Label(new Rect(655, 665, 400, 100), "-  A -");
+                    }
+                    else
+                    {
+                        GUI.Label(new Rect(655, 665, 400, 100), "-  -  -");
+                    }
+                    if (_d_)
+                    {
+                        GUI.Label(new Rect(755, 665, 400, 100), "-  D -");
+                    }
+                    else
+                    {
+                        GUI.Label(new Rect(755, 665, 400, 100), "-  -  -");
+                    }
+                    if (_space_)
+                    {
+                        GUI.Label(new Rect(690, 685, 400, 100), "- Space -");
+                    }
+                    else
+                    {
+                        GUI.Label(new Rect(690, 685, 400, 100), "-  -  -  -  -");
+                    }
+                }
+            
+  
+                if (GUIPrimary)
+                {
+
+                    GUI.Label(new Rect(1200, 120, 400, 100), "AccelSpeed: " + Mathf.Round(_AccelSpeed * 10));
+                    GUI.Label(new Rect(1200, 180, 400, 100), "Air/MaxSpeed: " + Mathf.Round(_AirSpeed * 10));
+                    GUI.Label(new Rect(1200, 200, 400, 100), "Collison: " + (_CollisonSpeed));
+                    GUI.Label(new Rect(1200, 20, 400, 100), "CurrentSpeed: " + Mathf.Round(_currentVelocity.magnitude * 10));
+                    GUI.Label(new Rect(1200, 40, 400, 100), "Drop: " + (_Drop * 100));
+                    GUI.Label(new Rect(1200, 60, 400, 100), "Project: " + Mathf.Round(_ProjectVelocity));
+                    GUI.Label(new Rect(1200, 80, 400, 100), "Rotation: " + (_Rotation));
+                    GUI.Label(new Rect(1200, 100, 400, 100), "Minus: " + Mathf.Round(_MinusSpeed * 10));
+                    GUI.Label(new Rect(1200, 140, 400, 100), "New: " + Mathf.Round(_NewSpeed * 10));
+                    GUI.Label(new Rect(1200, 160, 400, 100), "Old: " + Mathf.Round(_OldSpeed * 10));
+                    GUI.Label(new Rect(1200, 220, 400, 100), "Mulitpalyer: " + (_AirRatio));
+                }
+            
+        }
+        #endregion
+
+        #region MouseLook
+        private void RotateView()
+        {
+
+            if (isMouseLock)
+            {
+                m_MouseLook.YSensitivity = 0f;
+                m_MouseLook.XSensitivity = 0f;
+            }
+            m_MouseLook.LookRotation(transform, m_Camera.transform);
+            
+        }
+        #endregion
+        #region BoolActions
+        void Actions()
+        {
+            if (noJump)
+            {
+                m_JumpSpeed = 0f;
+            }
+            if (NoSpeed)
+            {
+                _AccelSpeed = 0f;
+            }
+            if (JumpPad1)
+            {
+                m_Jump = true;
+                m_JumpSpeed = 18f;
+            }
+
+        }
+        void Telleportion()
+        {
+            if (Reseted1)
+            {
+                Reseted1 = false;
+                transform.position = new Vector3(1.06f, 0.02f, 28.57f);
+            }
+            if (Reseted2)
+            {
+                Reseted2 = false;
+                transform.position = new Vector3(1.31f, -0.01f, 44.23f);
+            }
+            if (Portal1)
+            {
+                Portal1 = false;
+                transform.position = new Vector3(5.870636f, 0.9799996f, -3.37232f);
+            }
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                Reseted = true;
+                transform.position = new Vector3(0.5f, 1f, 0.5f);
+            }//Reset, Respawn..
+        }
+        #endregion
+        //Collison
+        #region CollisonBools/Varibles
+        private void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            Rigidbody body = hit.collider.attachedRigidbody;
+            //dont move the rigidbody if the character is on top of it
+            if (m_CollisionFlags == CollisionFlags.Below)
+            {
+                return;
+            }
+            if (hit.gameObject.name == "Start")
+            {
+                Timer = 0f;
+                StopTimer = false;
+                JumpStats = 0f;
+                StrafeCount = 0f;
+                StrafePostive = 0F;
+                StrafeNegitive = 0F;
+            }
+            if (hit.gameObject.name == "Pit1")
+            {
+                Reseted1 = true;
+            }
+            else
+            {
+                Reseted1 = false;
+            }
+            if (hit.gameObject.name == "Pit2")
+            {
+                Reseted2 = true;
+            }
+            else
+            {
+                Reseted2 = false;
+            }
+            if (hit.gameObject.name == "JumpTop1")
+            {
+                JumpPad1 = true;
+                isJumpPad = true;
+            }
+            else
+            {
+                JumpPad1 = false;
+                m_JumpSpeed = PresetJumpSpeed;
+                m_Jump = false;
+            }
+            if (hit.gameObject.name == "Portal1")
+            {
+                Portal1 = true;
+            }
+            else
+            {
+                Portal1 = false;
+            }
+            if (body == null || body.isKinematic)
+            {
+                return;
+            }
+            if (hit.gameObject.name == "End")
+            {
+
+            }
+            body.AddForceAtPosition(m_CharacterController.velocity * 0.1f, hit.point, ForceMode.Impulse);
+        }
+        private void OnTriggerStay(Collider other)
+        {
+           
+            if (StartTimer)
+            {
+
+                TimerText.text = "TIME: " + minutes + ":" + seconds + ":" + milliseconds;
+            }
+            if (other.gameObject.name == "Start")
+            {
+                TimerText.text = "TIME: 00:00:000";
+                Finnished = false;
+
+                StartGUI.SetActive(true);
+                MidGUI.SetActive(false);
+                EndGUI.SetActive(false);
+                Timer = 0f;
+                _AccelSpeed = 0f;
+                StartTimer = false;
+            }
+            else
+            {
+                if (Finnished)
+                {
+                    MidGUI.SetActive(false);
+                    EndGUI.SetActive(true);
+                }
+                else
+                {
+                    MidGUI.SetActive(true);
+                    StartGUI.SetActive(false);
+                    EndGUI.SetActive(false);
+                }
+                if (StopTimer == true)
+                {
+                    StartTimer = false;
+                }
+                else
+                {
+                    StartTimer = true;
+                }
+            }
+            if (other.gameObject.name == "Middle")
+            {
+                StatsGUI.SetActive(true);
+            }
+            if (other.gameObject.name == "End")
+            {
+                attheEnd = true;
+                Finnished = true;
+                MidGUI.SetActive(false);
+                StartGUI.SetActive(false);
+                EndGUI.SetActive(true);
+
+                // StatsGUI.SetActive(false);
+
+            }
+            else
+            {
+                attheEnd = false;
+            }
+        }
+        private void OnTriggerEnter(Collider other)
+        { //Usethisfortheend
+            Actions();
+            if (other.gameObject.name == "Start")
+            { 
+                Timer = 0f;
+                _AccelSpeed = 0f;
+            }
+            
+            if (other.gameObject.name == "End")
+            {
+                if (!Finnished)
+                {
+                    isendMenu = true;
+                }
+                else
+                {
+                    isendMenu = false;
+                }
+                NoSpeed = true;
+              //  BestTimeText.text = "BEST TIME: " + BestTimer;
+                if (BestTimer == 0)
+                {
+                    BestTimeText.text = "BEST TIME: " + minutes + ":" + seconds + ":" + milliseconds;
+                    BestTimer = Timer;
+           
+                }
+                if (Timer < BestTimer)
+                {
+                    BestTimeText.text = "BEST TIME: " + hours + ":" + minutes + ":" + seconds + ":" + milliseconds;
+                    BestTimer = Timer;
+       
+                }
+                StopTimer = true;
+                StartTimer = false;
+
+            }
+            else
+            {
+                NoSpeed = false;
+            }
+        }
+        private void OnTriggerExit(Collider other)
+        {
+            if (other.gameObject.name == "End")
+            {
+
+            }
+        }
+        #endregion
+    }
+}
