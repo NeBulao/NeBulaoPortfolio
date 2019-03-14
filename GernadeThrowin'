@@ -1,0 +1,85 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ThrowingGernade : MonoBehaviour
+{
+
+    public GameObject grenadePrefab1;
+    public float throwForce;
+    public float powerForce;
+    public float xForce;
+    public float xPower;
+    public float startForce;
+    public float startPower;
+    public float delay;
+    [SerializeField] private float countdown;
+    [SerializeField] private bool winding = false;
+    [SerializeField] private bool shot = false;
+    [SerializeField] private bool hasShot = false;
+    [SerializeField] private bool allowShot = false;
+    [HideInInspector] public Slider accuracySlider;
+    [HideInInspector] Text accuarcyText;
+    [HideInInspector] public float accuracypercentage;
+    private Gernade m_Gernade;
+    // Use this for initialization
+    void Start()
+    {
+        m_Gernade = GetComponent<Gernade>();
+        hasShot = false;
+        allowShot = false;
+        countdown = delay;
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+
+        countdown -= Time.deltaTime;
+        accuarcyText.text = Mathf.Round( accuracypercentage )+ "%";
+        accuracypercentage = (throwForce / 30f) * 100;
+        accuracySlider.value = accuracypercentage;
+       
+            if (throwForce > 30f)
+            {
+                throwForce = 30f;
+            }
+            if (Input.GetKey(KeyCode.Mouse0) && allowShot)
+            {
+                winding = true;
+                shot = false;           
+            }
+            if (Input.GetKeyUp(KeyCode.Mouse0) && allowShot)
+            {   
+                shot = true;
+                winding = false;
+                ThrowGrenade();
+                allowShot = false;
+            countdown =delay ;
+            }
+            if (countdown <= 0f)
+            {
+                countdown = delay;
+                allowShot = true;
+            }
+            if (winding)
+            {
+                throwForce += xForce * Time.deltaTime;
+            }
+            if (shot)
+            {
+                throwForce = startForce;
+            }
+        
+
+    }
+    void ThrowGrenade()
+    {
+        hasShot = true;
+        GameObject Grenade = Instantiate(grenadePrefab1, transform.position, transform.rotation);
+        Rigidbody rigidbody = Grenade.GetComponent<Rigidbody>();
+        rigidbody.AddForce(transform.forward * throwForce, ForceMode.VelocityChange);
+    }
+
+}
