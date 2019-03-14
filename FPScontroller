@@ -1,0 +1,341 @@
+using System;
+using UnityEngine;
+using UnityStandardAssets.CrossPlatformInput;
+using UnityStandardAssets.Utility;
+using Random = UnityEngine.Random;
+
+public class StrafeMovement : MonoBehaviour
+{
+    public bool isGround;
+    public bool inAir;
+    public bool isCrouchin;
+    [SerializeField]
+    private float accel = 200f;         // How fast the player accelerates on the ground
+    [SerializeField]
+    private float airAccel = 100f;      // How fast the player accelerates in the air
+    [SerializeField]
+    private float maxSpeed = 5.2f;      // Maximum player speed on the ground
+    [SerializeField]
+    private float maxAirSpeed = 0.33f;   // "Maximum" player speed in the air
+    [SerializeField]
+    private float friction = 8f;        // How fast the player decelerates on the ground
+    [SerializeField]
+    private float jumpForce = 5f;       // How high the player jumps
+    [SerializeField]
+    private LayerMask groundLayers;
+    public float CrouchMax;
+    [SerializeField]
+    private GameObject camObj;
+    #region GUI
+    public bool GUIKeys;
+    public bool GUIPrimary;
+    #endregion
+    #region KeysRegion
+    private bool _w_;
+    private bool _s_;
+    private bool _d_;
+    private bool _Nd_;
+    private bool _Na_;
+    private bool _a_;
+    private bool _space_;
+    private bool _Nspace_;
+    #endregion
+    private bool Reseted;
+    private bool Reseted1;
+    private bool Reseted2;
+    private bool NoSpeed;
+    private float lastJumpPress = -1f;
+    private float jumpPressDuration = 0.1f;
+    private bool onGround = false;
+
+    public enum RotationAxes { MouseXAndY = 0, MouseX = 1, MouseY = 2 }
+    public RotationAxes axes = RotationAxes.MouseXAndY;
+    public float sensitivityX = 15F;
+    public float sensitivityY = 15F;
+
+    public float minimumX = -360F;
+    public float maximumX = 360F;
+
+    public float minimumY = -60F;
+    public float maximumY = 60F;
+
+    public bool invertY = false;
+
+    float rotationY = 0F;
+    private CharacterController m_CharacterController;
+    private CollisionFlags m_CollisionFlags;
+
+
+    void Start()
+    {
+       
+        // Make the rigid body not change rotation
+        if (GetComponent<Rigidbody>())
+            GetComponent<Rigidbody>().freezeRotation = true;
+    }
+
+
+    private void Update()
+    {
+        print(new Vector3(GetComponent<Rigidbody>().velocity.x, 0f, GetComponent<Rigidbody>().velocity.z).magnitude);
+        if (Input.GetButton("Jump"))
+        {
+            lastJumpPress = Time.time;
+        }
+        float ySens = sensitivityY;
+        if (invertY) { ySens *= -1f; }
+
+        if (axes == RotationAxes.MouseXAndY)
+        {
+            float rotationX = transform.localEulerAngles.y + GetMouseX() * sensitivityX;
+
+            rotationY += GetMouseY() * ySens;
+            rotationY = Mathf.Clamp(rotationY, minimumY, maximumY);
+
+            transform.localEulerAngles = new Vector3(-rotationY, rotationX, 0);
+        }
+        else if (axes == RotationAxes.MouseX)
+        {
+            transform.Rotate(0, GetMouseX() * sensitivityX, 0);
+        }
+        else
+        {
+            rotationY += GetMouseY() * ySens;
+            rotationY = Mathf.Clamp(rotationY, minimumY, maximumY);
+
+            transform.localEulerAngles = new Vector3(-rotationY, transform.localEulerAngles.y, 0);
+        }
+        if (Reseted1)
+        {         
+            transform.position = new Vector3(1.5f, 0.5f, 0.5f);
+        }
+        if (Reseted2)
+        {
+            
+            transform.position = new Vector3(1.5f, 0.5f, 0.5f);
+        }
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            Reseted = true;
+            transform.position = new Vector3(1.5f, 0.5f, 0.5f);
+        }//Reset, Respawn..
+
+    }
+
+    private void FixedUpdate()
+    {
+
+        Vector2 input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+
+        // Get player velocity
+        Vector3 playerVelocity = GetComponent<Rigidbody>().velocity;
+        // Slow down if on ground
+        playerVelocity = CalculateFriction(playerVelocity);
+        // Add player input
+        playerVelocity += CalculateMovement(input, playerVelocity);
+        // Assign new velocity to player object
+        GetComponent<Rigidbody>().velocity = playerVelocity;
+    }
+
+    /// <summary>
+    /// Slows down the player if on ground
+    /// </summary>
+    /// <param name="currentVelocity">Velocity of the player</param>
+    /// <returns>Modified velocity of the player</returns>
+	private Vector3 CalculateFriction(Vector3 currentVelocity)
+    {
+        onGround = CheckGround();
+        float speed = currentVelocity.magnitude;
+
+        if (!onGround || Input.GetButton("Jump") || speed == 0f)
+            return currentVelocity;
+
+        float drop = speed * friction * Time.deltaTime;
+        return currentVelocity * (Mathf.Max(speed - drop, 0f) / speed);
+    }
+
+    /// <summary>
+    /// Moves the player according to the input. (THIS IS WHERE THE STRAFING MECHANIC HAPPENS)
+    /// </summary>
+    /// <param name="input">Horizontal and vertical axis of the user input</param>
+    /// <param name="velocity">Current velocity of the player</param>
+    /// <returns>Additional velocity of the player</returns>
+    private Vector3 CalculateMovement(Vector2 input, Vector3 velocity)
+    {
+        onGround = CheckGround();
+
+        //Different acceleration values for ground and air
+        float curAccel = accel;
+        if (!onGround)
+            curAccel = airAccel;
+
+        //Ground speed
+        float curMaxSpeed = maxSpeed;
+
+        //Air speed
+        if (!onGround)
+            curMaxSpeed = maxAirSpeed;
+
+        //Get rotation input and make it a vector
+        Vector3 camRotation = new Vector3(0f, camObj.transform.rotation.eulerAngles.y, 0f);
+        Vector3 inputVelocity = Quaternion.Euler(camRotation) *
+                                new Vector3(input.x * curAccel, 0f, input.y * curAccel);
+
+        //Ignore vertical component of rotated input
+        Vector3 alignedInputVelocity = new Vector3(inputVelocity.x, 0f, inputVelocity.z) * Time.deltaTime;
+
+        //Get current velocity
+        Vector3 currentVelocity = new Vector3(velocity.x, 0f, velocity.z);
+
+        //How close the current speed to max velocity is (1 = not moving, 0 = at/over max speed)
+        float max = Mathf.Max(0f, 1 - (currentVelocity.magnitude / curMaxSpeed));
+
+        //How perpendicular the input to the current velocity is (0 = 90°)
+        float velocityDot = Vector3.Dot(currentVelocity, alignedInputVelocity);
+
+        //Scale the input to the max speed
+        Vector3 modifiedVelocity = alignedInputVelocity * max;
+
+        //The more perpendicular the input is, the more the input velocity will be applied
+        Vector3 correctVelocity = Vector3.Lerp(alignedInputVelocity, modifiedVelocity, velocityDot);
+
+        //Apply jump
+        correctVelocity += GetJumpVelocity(velocity.y);
+
+        //Return
+        return correctVelocity;
+    }
+
+    /// <summary>
+    /// Calculates the velocity with which the player is accelerated up when jumping
+    /// </summary>
+    /// <param name="yVelocity">Current "up" velocity of the player (velocity.y)</param>
+    /// <returns>Additional jump velocity for the player</returns>
+	private Vector3 GetJumpVelocity(float yVelocity)
+    {
+        Vector3 jumpVelocity = Vector3.zero;
+
+        if (Time.time < lastJumpPress + jumpPressDuration && yVelocity < jumpForce && CheckGround())
+        {
+            lastJumpPress = -1f;
+            jumpVelocity = new Vector3(0f, jumpForce - yVelocity, 0f);
+        }
+
+        return jumpVelocity;
+    }
+
+    /// <summary>
+    /// Checks if the player is touching the ground. This is a quick hack to make it work, don't actually do it like this.
+    /// </summary>
+    /// <returns>True if the player touches the ground, false if not</returns>
+    private bool CheckGround()
+    {
+        Ray ray = new Ray(transform.position, Vector3.down);
+        bool result = Physics.Raycast(ray, GetComponent<Collider>().bounds.extents.y + 0.1f, groundLayers);
+        return result;
+    }
+    float GetMouseX()
+    {
+        return Input.GetAxis("Mouse X");
+    }
+
+    float GetMouseY()
+    {
+        return Input.GetAxis("Mouse Y");
+    }
+
+    void Keys()
+    {
+        _w_ = (Input.GetKey(KeyCode.W));
+        _s_ = Input.GetKey(KeyCode.S);
+        _d_ = (Input.GetKey(KeyCode.D));
+        _Nd_ = (Input.GetKeyUp(KeyCode.D));
+        _a_ = (Input.GetKey(KeyCode.A));
+        _Na_ = (Input.GetKeyUp(KeyCode.A));
+        _space_ = (Input.GetKey(KeyCode.Space));
+        _Nspace_ = (Input.GetKeyUp(KeyCode.Space));
+    }
+    private void OnGUI()
+    {
+        Keys();
+        float X = 0;
+        float Y = 0;
+        Y += (Input.GetAxis("Mouse Y"));
+        X += (Input.GetAxis("Mouse X"));
+        {
+            if (GUIKeys)
+            {
+              
+                GUI.color = Color.yellow;
+                GUI.Box(new Rect(525, 450, 270, 105), "Keys:");
+                if (_w_)
+                {
+                    GUI.Label(new Rect(646, 475, 400, 100), "- W -");
+                }
+                else
+                {
+                    GUI.Label(new Rect(645, 475, 400, 100), "-  -  -");
+                }
+                if (_s_)
+                {
+                    GUI.Label(new Rect(646, 500, 400, 100), "- S -");
+                }
+                else
+                {
+                    GUI.Label(new Rect(645, 500, 400, 100), "-  -  -");
+                }
+                if (_a_)
+                {
+
+                    GUI.Label(new Rect(610, 500, 400, 100), "-  A -");
+                }
+                else
+                {
+                    GUI.Label(new Rect(610, 500, 400, 100), "-  -  -");
+                }
+                if (_d_)
+                {
+                    GUI.Label(new Rect(681, 500, 400, 100), "-  D -");
+                }
+                else
+                {
+                    GUI.Label(new Rect(680, 500, 400, 100), "-  -  -");
+                }
+                if (_space_)
+                {
+                    GUI.Label(new Rect(635, 525, 400, 100), "- Space -");
+                }
+                else
+                {
+                    GUI.Label(new Rect(637, 525, 400, 100), "-  -  -  -  -");
+                }
+            }
+
+        }
+    }
+
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        Rigidbody body = hit.collider.attachedRigidbody;
+        //dont move the rigidbody if the character is on top of it
+        if (m_CollisionFlags == CollisionFlags.Below)
+        {
+            return;
+        }
+        if (hit.gameObject.name == "Pit1")
+        {
+            Debug.LogError("NO");
+            Reseted1 = true;
+        }
+        if (hit.gameObject.name == "Pit2")
+        {
+            Debug.LogError("YES");
+            Reseted2 = true;
+        }
+        if (body == null || body.isKinematic)
+        {
+            return;
+        }
+        body.AddForceAtPosition(m_CharacterController.velocity * 0.1f, hit.point, ForceMode.Impulse);
+    }
+}
