@@ -1,0 +1,438 @@
+using System;
+
+namespace GamblingTime
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            Random random = new Random();
+
+            int Money = 500;
+            int Wager;           
+            int predice; //the guessing number on the dice            
+            int prejackpot; // the guessing number on the jackpot
+            int preallfornothing;
+            Console.WriteLine("(c) 2019 NebulaStudio. All rights reserved.");
+            Console.WriteLine("Welcome to GamblingTime! *press anything to start*");
+            Console.ReadKey();
+            #region Space
+            Console.WriteLine(" ");
+            #endregion
+
+            Menu:
+            #region Space
+            Console.WriteLine(" ");
+            #endregion
+            Console.WriteLine("GamblingTime, gamble your paycheck away. Money: $" + Money);
+            Console.WriteLine("Choose your gamemode: ");
+            Console.WriteLine("1) Coinflip");
+            Console.WriteLine("2) DiceRoll");
+            Console.WriteLine("3) Lottery");
+            Console.WriteLine("4) ColorPicker");
+
+            char inputMenu = Console.ReadKey().KeyChar;
+            if (inputMenu == '1')
+            {
+                #region Space
+                Console.WriteLine(" ");
+                Console.WriteLine(" ");
+                #endregion
+                #region Coinflip
+                {
+                   
+                    Console.WriteLine(" ");
+                    Console.WriteLine("|| Conflip ||");
+                    Console.WriteLine("Rules: Wager your money and predict the coinflip. Guess correctly you win, if else you lose. ");
+                    Console.WriteLine("Confirm? ( y / n )");
+                    string InputYorN = Console.ReadLine();                 
+                    if (InputYorN == "y")
+                    { goto Coinflip; }
+                    if (InputYorN == "n")
+                    {
+                        goto Menu;                     
+                    }
+                    #region Space
+                    Console.WriteLine(" ");
+                    #endregion
+                    Coinflip:
+                    int coin = random.Next(1, 3);
+                    Console.WriteLine("Your Wager? " + "Money: $" + Money);
+                    Wager = Convert.ToInt32(Console.ReadLine());
+                    if (Wager > Money)
+                    {
+                        Wager = Money;
+                    }
+                    if (Wager < Money / 20)
+                    {
+                        Wager = Money / 20;
+                    }
+                    Console.WriteLine("Heads(h) or Tails(t)? " + "Wager: $" + Wager);
+                    string InputConflip = Console.ReadLine();
+                    if (InputConflip == "h")
+                    {
+                        //heads = 1
+                        if (coin == 1)
+                        {
+                            Money = Money + Wager;
+                            Console.WriteLine("Congrates, you won");
+                            Console.WriteLine("Money: " + Money);
+                        }
+                        else
+                        {
+                            Money = Money - Wager;
+                            Console.WriteLine("Sorry, you lost. It landed on tails");
+                            Console.WriteLine("Money: $" + Money);
+                        }
+                    }
+                    if (InputConflip == "t")
+                    {
+                        //tails = 2
+                        if (coin == 2)
+                        {
+                            Money = Money + Wager;
+                            Console.WriteLine(" ");
+                            Console.WriteLine("Congrates, you won");
+                            Console.WriteLine("Money: " + Money);
+                        }
+                        else
+                        {
+                            Money = Money - Wager;
+                            Console.WriteLine(" ");
+                            Console.WriteLine("Sorry, you lost. It landed on heads");
+                            Console.WriteLine("Money: $" + Money);
+                        }
+
+                    }
+                    Console.WriteLine("Wanna play again? ( y / n )");
+                    InputYorN = Console.ReadLine();
+                    if (InputYorN == "y")
+                    {
+                        if (Money < 0)
+                        {
+                            Console.WriteLine("Sorry, you dont have enough money");
+                            Console.WriteLine("Game Over");
+                        }
+                        else if (Money == 0)
+                        {
+                            Console.WriteLine("Sorry, you dont have enough money");
+                            Console.WriteLine("Game Over");
+                        }
+                        else
+                        {
+                            goto Coinflip;
+                        }
+                    }
+                    else if (InputYorN == "n")
+                    {
+                        if (Money < 0)
+                        {
+                            Console.WriteLine("Sorry, youre in debt");
+                            Console.WriteLine("Game Over");
+                        }
+                        else if (Money == 0)
+                        {
+                            Console.WriteLine("Sorry, youre in debt");
+                            Console.WriteLine("Game Over");
+                        }
+                        else
+                        {
+                            goto Menu;
+
+                        }
+                    }
+                }
+                #endregion
+            }
+            if (inputMenu == '2')
+            {
+                #region Space
+                Console.WriteLine(" ");
+                Console.WriteLine(" ");
+                #endregion
+                #region DiceRoll
+                Console.WriteLine(" ");
+                Console.WriteLine("|| DiceRoll ||");
+                Console.WriteLine("Rules: Wager your money and predict what side the dice will land. Guess correctly you win double the wager, if else you lose. ");
+                Console.WriteLine("Confirm? ( y / n )");
+                string InputYorN = Console.ReadLine();
+                if (InputYorN == "y")
+                {
+
+                }
+                if (InputYorN == "n")
+                {
+                    goto Menu;
+                }
+                #region Space
+                Console.WriteLine(" ");
+                #endregion
+                DiceRoll:
+                int dice = random.Next(1, 7);
+                Console.WriteLine("Your Wager? " + "Money: $" + Money);
+                Wager = Convert.ToInt32(Console.ReadLine());
+                if (Wager > Money)
+                {
+                    Wager = Money;
+                }
+                if (Wager < Money / 20)
+                {
+                    Wager = Money / 20;
+                }
+                Console.WriteLine("Pick your side. " + "Wager: $" + Wager);
+                predice = Convert.ToInt32(Console.ReadLine());
+                if (predice == dice)
+                {
+                    Money = Money + (Wager * 2);
+                    Console.WriteLine("Congrates, you won");
+                    Console.WriteLine("Money: $" + Money);
+                }
+                else
+                {
+                    Money = Money - (Wager);
+                    Console.WriteLine("Sorry, you lost. It landed on " + dice);
+                    Console.WriteLine("Money: $" + Money);
+                }
+                Console.WriteLine("Wanna play again? ( y / n )");
+                InputYorN = Console.ReadLine();
+                if (InputYorN == "y")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, you dont have enough money");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, you dont have enough money");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto DiceRoll;
+                    }
+                }
+                else if (InputYorN == "n")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto Menu;
+
+                    }
+                }
+                #endregion
+            }
+            if (inputMenu == '3')
+            {
+                #region Space
+                Console.WriteLine(" ");
+                Console.WriteLine(" ");
+                #endregion
+                Console.WriteLine("Choose your lottery: ");
+                Console.WriteLine("1) JackPot");
+                Console.WriteLine("2) All for Nothing");
+                Console.WriteLine("3) Lucky for Life");
+            }
+
+            char inputLottery = Console.ReadKey().KeyChar;
+
+            if (inputLottery == '1')
+            {
+                #region JackPot
+                Console.WriteLine(" ");
+                Console.WriteLine("|| JackPot ||");
+                Console.WriteLine("Rules: Pay only $50 to guess a number between 1 and 20. And win $5,000! " + "Money: $" + Money);
+                Console.WriteLine("Confirm? ( y / n )");
+                string InputYorN = Console.ReadLine();
+                if (InputYorN == "y")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, you dont have enough money");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, you dont have enough money");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto Jackpot;
+                    }
+                }
+                else if (InputYorN == "n")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto Menu;
+
+                    }
+                }
+                Jackpot:
+                int jackpot = random.Next(1, 20);
+                Money = Money - 50;
+                Console.WriteLine("Pick a number through 1 to 20 " + "Money: $" + Money);
+                prejackpot = Convert.ToInt32(Console.ReadLine());
+                if (prejackpot == jackpot)
+                {
+                    Money = Money + 5000;
+                    Console.WriteLine("CONGRATES, YOU WON $5,000!");
+                    Console.WriteLine("Money: $" + Money);
+                }
+                else
+                {
+                    Console.WriteLine("Better luck next time... It was " + jackpot);
+                    Console.WriteLine("Money: $" + Money);
+                }
+                Console.WriteLine("Wanna play again? ( y / n )");
+                InputYorN = Console.ReadLine();
+                if (InputYorN == "y")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, you dont have enough money");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, you dont have enough money");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto Jackpot;
+                    }
+                }
+                else if (InputYorN == "n")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto Menu;
+
+                    }
+                }
+                Console.ReadKey();
+                #endregion
+            }
+            if (inputLottery == '2')
+            {
+               #region AllforNothing
+                Console.WriteLine(" ");
+                Console.WriteLine("|| AllforNothing ||");
+                Console.WriteLine("Rules: Guess a number between 1 through 10 and get x10 all your money. Guess incorrectly you lose everything. " + "Money: $" + Money);
+                Console.WriteLine("Confirm? ( y / n )");
+                string InputYorN = Console.ReadLine();
+                if (InputYorN == "y")
+                {
+                    goto Allfornothing;
+                }
+                else if (InputYorN == "n")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto Menu;
+
+                    }
+                }
+                Allfornothing:
+                int allfornothing = random.Next(1, 10);
+                Console.WriteLine("Pick a number through 1 to 10 " + "Money: $" + Money);
+                preallfornothing = Convert.ToInt32(Console.ReadLine());
+                if (preallfornothing == allfornothing)
+                {
+                    Money = Money * 10;
+                    Console.WriteLine("CONGRATES, YOU GUESS RIGHT!");
+                    Console.WriteLine("Money: $" + Money);
+                }
+                else
+                {
+                    Money = Money - Money;
+                    Console.WriteLine("Sorry pal, you're in debt... It was " + allfornothing);
+                    Console.WriteLine("Money: $" + Money);
+                }
+                Console.WriteLine("Wanna play again? ( y / n )");
+                InputYorN = Console.ReadLine();
+                if (InputYorN == "y")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, you dont have enough money");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, you dont have enough money");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto Allfornothing;
+                    }
+                }
+                else if (InputYorN == "n")
+                {
+                    if (Money < 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else if (Money == 0)
+                    {
+                        Console.WriteLine("Sorry, youre in debt");
+                        Console.WriteLine("Game Over");
+                    }
+                    else
+                    {
+                        goto Menu;
+
+                    }
+                }
+                Console.ReadKey();
+
+                #endregion
+            }
+        }
+    }
+}
